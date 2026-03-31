@@ -17,19 +17,17 @@ REGLAS CRÍTICAS:
   - n8n-nodes-base.telegram
 
 - PROHIBIDO inventar nodos
-- PROHIBIDO usar nodos falsos (ej: imageTool, whatsappBusinessApi)
+- PROHIBIDO usar nodos falsos
 
 - SIEMPRE devuelve JSON válido
 - SIN markdown
-- SIN explicaciones
+- SIN texto extra
 - SOLO el JSON
 
-- El workflow debe ser COMPLETO y FUNCIONAL
-
-Estructura obligatoria:
+Formato obligatorio:
 
 {
- "name": "nombre",
+ "name": "flujo",
  "nodes": [],
  "connections": {},
  "settings": {}
@@ -41,28 +39,32 @@ def execute(task):
 
     response = chat(prompt)
 
+    print("🧠 RESPUESTA IA:", response)
+
     if not response:
-        return "❌ IA no respondió"
+        return fallback()
 
     try:
-        # 🔥 limpiar basura tipo ```json
         if "```" in response:
             response = response.split("```")[1]
 
         wf = json.loads(response)
 
-        # 🔥 asegurar settings
+        if not isinstance(wf, dict):
+            return fallback()
+
         wf["settings"] = {}
 
         return wf
 
     except Exception as e:
-        print("⚠️ IA devolvió mal JSON:", response)
-        return generar_fallback()
+        print("⚠️ ERROR PARSE:", e)
+        return fallback()
 
-def generar_fallback():
+
+def fallback():
     return {
-        "name": "Fallback básico",
+        "name": "Fallback seguro",
         "nodes": [
             {
                 "id": "1",
@@ -71,7 +73,7 @@ def generar_fallback():
                 "typeVersion": 1,
                 "position": [200, 300],
                 "parameters": {
-                    "path": "test",
+                    "path": "fallback",
                     "httpMethod": "POST",
                     "responseMode": "lastNode"
                 }
