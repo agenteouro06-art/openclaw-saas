@@ -1,16 +1,19 @@
-import time
 import requests
+import time
+import json
 import os
+from dotenv import load_dotenv
 from agent.planner import plan
 from agent.executor import execute
-from dotenv import load_dotenv
 
 load_dotenv()
 
-TOKEN = os.getenv("TELEGRAM_TOKEN")
-URL = f"https://api.telegram.org/bot{TOKEN}"
+TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
+
+URL = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}"
 
 last_update_id = 0
+
 
 def get_updates():
     global last_update_id
@@ -19,17 +22,17 @@ def get_updates():
         response = requests.get(f"{URL}/getUpdates?offset={last_update_id + 1}")
         data = response.json()
 
-        print("📡 RAW TELEGRAM:", data)  # 🔥 DEBUG CLAVE
+        print("📡 RAW TELEGRAM:", data)
 
         if not data.get("ok"):
-            print("❌ ERROR TELEGRAM:", data)
             return []
 
         return data.get("result", [])
 
     except Exception as e:
-        print("❌ ERROR REQUEST:", e)
+        print("❌ Error get_updates:", e)
         return []
+
 
 def send_message(chat_id, text):
     try:
@@ -38,7 +41,8 @@ def send_message(chat_id, text):
             "text": text
         })
     except Exception as e:
-        print("❌ ERROR ENVIANDO:", e)
+        print("❌ Error send_message:", e)
+
 
 print("🔥 BOT ACTIVO (OPENCLAW)")
 
@@ -46,21 +50,33 @@ while True:
     updates = get_updates()
 
     for update in updates:
-        last_update_id = update["update_id"]
+        try:
+            last_update_id = update["update_id"]
 
-        if "message" in update and "text" in update["message"]:
-            chat_id = update["message"]["chat"]["id"]
-            user_text = update["message"]["text"]
+            message = update.get("message")
+            if not message:
+                continue
 
-            print(f"📩 {chat_id}: {user_text}")
+            chat_id = message["chat"]["id"]
+            text = message.get("text", "")
 
-            try:
-                task = plan(user_text)
-                result = execute(task)
+            print(f"📩 {chat_id}: {text}")
 
-                send_message(chat_id, f"🚀 Resultado:\n{result}")
+            # 🧠 PLAN
+            task = plan(text)
 
-            except Exception as e:
-                send_message(chat_id, f"❌ Error: {str(e)}")
+            # ⚙️ EXECUTE
+            result = execute(task)
+
+            # 🔥 ANTI-CRASH
+            if isinstance(result, dict):
+                output = json.dumps(result, indent=2)
+            else:
+                output = str(result)
+
+            send_message(chat_id, f"🚀 Resultado:\n{output[:3500]}")
+
+        except Exception as e:
+            print("❌ Error:", e)
 
     time.sleep(2)
