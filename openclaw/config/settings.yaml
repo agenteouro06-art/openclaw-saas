@@ -1,1 +1,2 @@
-
+model: mistralai/mistral-7b-instruct
+mode: saas
