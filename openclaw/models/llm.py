@@ -11,7 +11,7 @@ def chat(prompt):
         response = requests.post(
             "https://openrouter.ai/api/v1/chat/completions",
             headers={
-                "Authorization": f"Bearer {OPENROUTER_API_KEY}",  # 🔥 CLAVE
+                "Authorization": f"Bearer {OPENROUTER_API_KEY}",
                 "Content-Type": "application/json",
                 "HTTP-Referer": "http://localhost",
                 "X-Title": "OpenClaw SaaS"
@@ -21,7 +21,7 @@ def chat(prompt):
                 "messages": [
                     {"role": "user", "content": prompt}
                 ],
-                "max_tokens": 1000
+                "max_tokens": 1500
             },
             timeout=30
         )
@@ -30,10 +30,10 @@ def chat(prompt):
 
         if "error" in data:
             print("❌ Error IA:", data)
-            return "Error IA"
+            return None
 
         return data["choices"][0]["message"]["content"]
 
     except Exception as e:
         print("❌ Exception IA:", e)
-        return "Error IA"
+        return None
