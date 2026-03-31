@@ -3,6 +3,9 @@ import requests
 import os
 from agent.planner import plan
 from agent.executor import execute
+from dotenv import load_dotenv
+
+load_dotenv()
 
 TOKEN = os.getenv("TELEGRAM_TOKEN")
 URL = f"https://api.telegram.org/bot{TOKEN}"
@@ -11,15 +14,31 @@ last_update_id = 0
 
 def get_updates():
     global last_update_id
-    response = requests.get(f"{URL}/getUpdates?offset={last_update_id + 1}")
-    data = response.json()
-    return data["result"]
+
+    try:
+        response = requests.get(f"{URL}/getUpdates?offset={last_update_id + 1}")
+        data = response.json()
+
+        print("📡 RAW TELEGRAM:", data)  # 🔥 DEBUG CLAVE
+
+        if not data.get("ok"):
+            print("❌ ERROR TELEGRAM:", data)
+            return []
+
+        return data.get("result", [])
+
+    except Exception as e:
+        print("❌ ERROR REQUEST:", e)
+        return []
 
 def send_message(chat_id, text):
-    requests.post(f"{URL}/sendMessage", json={
-        "chat_id": chat_id,
-        "text": text
-    })
+    try:
+        requests.post(f"{URL}/sendMessage", json={
+            "chat_id": chat_id,
+            "text": text
+        })
+    except Exception as e:
+        print("❌ ERROR ENVIANDO:", e)
 
 print("🔥 BOT ACTIVO (OPENCLAW)")
 
