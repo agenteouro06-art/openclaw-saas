@@ -1,23 +1,59 @@
-from agent.retriever import find_real_workflow
-from agent.adapter import adapt_workflow
-from agent.validator import validate_workflow
+import json
+import re
+from models.llm import ask_llm
 
-def plan(user_prompt):
-    print("🔎 Buscando workflow real...")
-    
-    wf = find_real_workflow(user_prompt)
 
-    if not wf:
-        print("⚠️ No encontrado, fallback")
+def limpiar_json(texto):
+    try:
+        # 🔥 eliminar ```json y ```
+        texto = re.sub(r"```json", "", texto)
+        texto = re.sub(r"```", "", texto)
+
+        # 🔥 quitar espacios basura
+        texto = texto.strip()
+
+        return json.loads(texto)
+
+    except Exception as e:
+        print("❌ Error limpiando JSON:", e)
         return None
 
-    print("🧠 Adaptando workflow...")
-    
-    adapted = adapt_workflow(wf, user_prompt)
 
-    if validate_workflow(adapted):
-        print("✅ Workflow válido")
-        return adapted
+def plan(user_input):
+    print("🔎 Buscando workflow real...")
 
-    print("❌ Workflow inválido")
-    return None
+    prompt = f"""
+Crea un workflow de n8n REAL y válido.
+
+REGLAS:
+- SOLO usar nodos:
+  webhook, httpRequest, set, if, function, respondToWebhook, gmail, telegram
+- NO inventar nodos como whatsapp
+- JSON válido sin texto extra
+- Debe incluir: nodes, connections, settings
+
+OBJETIVO:
+{user_input}
+"""
+
+    respuesta = ask_llm(prompt)
+
+    if not respuesta:
+        print("❌ IA no respondió")
+        return None
+
+    print("🧠 RESPUESTA LIMPIA:", respuesta)
+
+    workflow = limpiar_json(respuesta)
+
+    if not workflow:
+        print("❌ Workflow inválido")
+        return None
+
+    # 🔥 VALIDACIÓN CLAVE
+    if "nodes" not in workflow or "connections" not in workflow:
+        print("❌ JSON no tiene estructura válida")
+        return None
+
+    print("✅ Workflow listo")
+    return workflow
