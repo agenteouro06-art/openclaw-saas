@@ -1,39 +1,42 @@
 import requests
 import os
-from dotenv import load_dotenv
 
-load_dotenv()
+API_KEY = os.getenv("OPENROUTER_API_KEY")
 
-OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
+def ask_llm(prompt):
+    if not API_KEY:
+        print("❌ Falta OPENROUTER_API_KEY en .env")
+        return "{}"
 
-def chat(prompt):
+    url = "https://openrouter.ai/api/v1/chat/completions"
+
+    headers = {
+        "Authorization": f"Bearer {API_KEY}",
+        "Content-Type": "application/json"
+    }
+
+    data = {
+        "model": "mistralai/mistral-7b-instruct",
+        "messages": [
+            {
+                "role": "system",
+                "content": "Devuelve SOLO JSON válido para n8n. No expliques nada."
+            },
+            {
+                "role": "user",
+                "content": prompt
+            }
+        ]
+    }
+
     try:
-        response = requests.post(
-            "https://openrouter.ai/api/v1/chat/completions",
-            headers={
-                "Authorization": f"Bearer {OPENROUTER_API_KEY}",
-                "Content-Type": "application/json",
-                "HTTP-Referer": "http://localhost",
-                "X-Title": "OpenClaw SaaS"
-            },
-            json={
-                "model": "anthropic/claude-3-haiku",
-                "messages": [
-                    {"role": "user", "content": prompt}
-                ],
-                "max_tokens": 1500
-            },
-            timeout=30
-        )
+        r = requests.post(url, headers=headers, json=data)
+        res = r.json()
 
-        data = response.json()
+        print("🧠 RESPUESTA IA:", res)
 
-        if "error" in data:
-            print("❌ Error IA:", data)
-            return None
-
-        return data["choices"][0]["message"]["content"]
+        return res["choices"][0]["message"]["content"]
 
     except Exception as e:
-        print("❌ Exception IA:", e)
-        return None
+        print("❌ Error IA:", e)
+        return "{}"
