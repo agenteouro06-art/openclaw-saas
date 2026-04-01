@@ -1,19 +1,13 @@
 import requests
 import time
-import json
 import os
-from dotenv import load_dotenv
 from agent.planner import plan
-from agent.executor import execute
-
-load_dotenv()
+from agent.executor import send_to_n8n
 
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
-
 URL = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}"
 
 last_update_id = 0
-
 
 def get_updates():
     global last_update_id
@@ -22,15 +16,14 @@ def get_updates():
         response = requests.get(f"{URL}/getUpdates?offset={last_update_id + 1}")
         data = response.json()
 
-        print("📡 RAW TELEGRAM:", data)
-
         if not data.get("ok"):
+            print("❌ Error Telegram:", data)
             return []
 
         return data.get("result", [])
-
+    
     except Exception as e:
-        print("❌ Error get_updates:", e)
+        print("❌ Error conexión Telegram:", e)
         return []
 
 
@@ -41,10 +34,10 @@ def send_message(chat_id, text):
             "text": text
         })
     except Exception as e:
-        print("❌ Error send_message:", e)
+        print("❌ Error enviando mensaje:", e)
 
 
-print("🔥 BOT ACTIVO (OPENCLAW)")
+print("🔥 BOT ACTIVO (OPENCLAW MARKETPLACE MODE)")
 
 while True:
     updates = get_updates()
@@ -53,30 +46,38 @@ while True:
         try:
             last_update_id = update["update_id"]
 
-            message = update.get("message")
-            if not message:
+            if "message" not in update:
                 continue
 
+            message = update["message"]
             chat_id = message["chat"]["id"]
             text = message.get("text", "")
 
             print(f"📩 {chat_id}: {text}")
 
-            # 🧠 PLAN
-            task = plan(text)
+            if not text:
+                continue
 
-            # ⚙️ EXECUTE
-            result = execute(task)
+            send_message(chat_id, "🧠 Buscando workflow real...")
 
-            # 🔥 ANTI-CRASH
-            if isinstance(result, dict):
-                output = json.dumps(result, indent=2)
-            else:
-                output = str(result)
+            # 🔎 PLAN (buscar + adaptar workflow)
+            workflow = plan(text)
 
-            send_message(chat_id, f"🚀 Resultado:\n{output[:3500]}")
+            if not workflow:
+                send_message(chat_id, "❌ No se pudo generar workflow válido")
+                continue
+
+            send_message(chat_id, "🚀 Creando workflow en n8n...")
+
+            # 🚀 ENVIAR A N8N
+            response = send_to_n8n(workflow)
+
+            print("📦 RESPUESTA N8N:", response)
+
+            send_message(chat_id, f"✅ Workflow creado:\n{response}")
 
         except Exception as e:
-            print("❌ Error:", e)
+            print("❌ Error general:", e)
+            send_message(chat_id, "❌ Error procesando solicitud")
 
     time.sleep(2)
