@@ -5,8 +5,8 @@ API_KEY = os.getenv("OPENROUTER_API_KEY")
 
 def ask_llm(prompt):
     if not API_KEY:
-        print("❌ Falta OPENROUTER_API_KEY en .env")
-        return "{}"
+        print("❌ Falta OPENROUTER_API_KEY")
+        return None
 
     url = "https://openrouter.ai/api/v1/chat/completions"
 
@@ -16,11 +16,12 @@ def ask_llm(prompt):
     }
 
     data = {
-        "model": "mistralai/mistral-7b-instruct",
+        # 🔥 MODELO NUEVO (FUNCIONA)
+        "model": "openrouter/auto",
         "messages": [
             {
                 "role": "system",
-                "content": "Devuelve SOLO JSON válido para n8n. No expliques nada."
+                "content": "Eres experto en n8n. Devuelve SOLO JSON válido. No expliques nada."
             },
             {
                 "role": "user",
@@ -35,8 +36,13 @@ def ask_llm(prompt):
 
         print("🧠 RESPUESTA IA:", res)
 
+        # 🔥 VALIDACIÓN REAL
+        if "choices" not in res:
+            print("❌ IA no devolvió choices")
+            return None
+
         return res["choices"][0]["message"]["content"]
 
     except Exception as e:
         print("❌ Error IA:", e)
-        return "{}"
+        return None
